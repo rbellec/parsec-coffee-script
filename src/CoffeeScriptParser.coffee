@@ -164,10 +164,10 @@ cs.argumentsWithoutParentheses = gg.sequence(
 
 # Disabled: both forms have different precedences
 # function args
-#cs.arguments = gg.choice(
-#    cs.argumentsWithParentheses,
-#    cs.argumentsWithoutParentheses
-#)
+#     cs.arguments = gg.choice(
+#         cs.argumentsWithParentheses,
+#         cs.argumentsWithoutParentheses
+#     )
 
 # super invocation, with or without arguments
 cs.super = gg.lift("super").setBuilder -> tree 'Super'
@@ -201,7 +201,7 @@ cs.parentheses = gg.sequence(
         Tag = if arrow=='->' then 'Function' else 'Boundfunc'
         if splatIdx? then return tree Tag, insideParens, body, splatIdx
         else return tree Tag, insideParens, body
-    else if insideParens.length == 1 # TODO: forbid splats?
+    else if insideParens.length == 1 # __TODO__: forbid splats?
         return insideParens[0]
     else
         return gg.fail
@@ -470,18 +470,18 @@ suffix parser:'--', prec:180, builder:'--suffix'
 
 # Disabled for now, Node.coffee flattens binary trees to generate comparison chains:
 
-# cs.comparators = gg.choice(
-#     '<', '>', '<=', '>=', '==', '!=',
-#     gg.wrap('is').setBuilder(->'=='),
-#     gg.wrap('isnt').setBuilder(->'!=')
-# )
+#     cs.comparators = gg.choice(
+#         '<', '>', '<=', '>=', '==', '!=',
+#         gg.wrap('is').setBuilder(->'=='),
+#         gg.wrap('isnt').setBuilder(->'!=')
+#     )
 
-# infix parser:cs.comparators, prec:130, assoc:'flat', builder:(operands, operators) ->
-#     print "operators = #{operators}\n"
-#     print "operands = #{operands}\n"
-#     pairs = (tree 'op', operators[i], operands[i], operands[i+1] for i in [0...operators.length])
-#     if pairs.length==1 then pairs[0]
-#     else tree 'op', '&&', pairs...
+#     infix parser:cs.comparators, prec:130, assoc:'flat', builder:(operands, operators) ->
+#         print "operators = #{operators}\n"
+#         print "operands = #{operands}\n"
+#         pairs = (tree 'op', operators[i], operands[i], operands[i+1] for i in [0...operators.length])
+#         if pairs.length==1 then pairs[0]
+#         else tree 'op', '&&', pairs...
 
 # Operators whose concrete syntax names match AST 'Op' tag.
 regularOperators = [
@@ -491,9 +491,9 @@ regularOperators = [
     [ infix,  {prec:160}, '+', '-' ],
     [ infix,  {prec:150}, '<<', '>>', '>>>' ],
     [ infix,  {prec:140}, '&', '|', '^' ],
-    [ infix,  {prec:130}, '<=', '<', '>', '>=' ], # TODO convert into chainable operators
-    [ infix,  {prec:120}, 'instanceof', 'in', 'of' ], # TODO check prec
-    [ prefix, {prec:120}, 'delete', 'typeof', 'new', 'throw' ], # TODO not operators?
+    [ infix,  {prec:130}, '<=', '<', '>', '>=' ], # __TODO__ convert into chainable operators
+    [ infix,  {prec:120}, 'instanceof', 'in', 'of' ], # __TODO__ check prec
+    [ prefix, {prec:120}, 'delete', 'typeof', 'new', 'throw' ], # __TODO__ not operators?
     # 80: infix '?', surrounded by spaces
     [ infix, {prec:70, assoc:'right'}, '=', '-=', '+=', '/=', '*=', '%=', '||=', '&&=', '?='],
 ]

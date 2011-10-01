@@ -1,5 +1,5 @@
 #
-# Grammar generator
+# # Grammar generator
 #
 
 L = require './log'
@@ -16,16 +16,17 @@ error = exports.error = { toString: -> "<ERROR>" }
 
 lastUid=1
 
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 # Check that x is either a parser, or something that can be sensibly
 # converted into a parser.
 # Return a parser or throws an error.
 #
 # Supported lifting operations:
+#
 #  * strings are lifted into keywords;
 #  * arrays are lifted into sequences (and their content recursively lifted);
 #  * functions are lifted into parsers.
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 lift = exports.lift = (x) ->
     return     x                 if x instanceof Parser
     return new Wrap(x...)        if x instanceof Array and x.length==1
@@ -37,42 +38,42 @@ lift = exports.lift = (x) ->
     throw  new Error "null argument to parser" unless x
     throw  new Error "Parser expected, got #{x.toString()}"
 
-#-------------------------------------------------------------------------------
-# Common ancestor for all parsers.
+#<!---------------------------------------------------------------------------->
+# ## Common ancestor for all parsers.
 #
 # Internal structure:
 #
-# catcodes: Optional set of token catcodes with which this parser might start.
-# If there is a set, then it must be exhaustive:
+# - __catcodes__: Optional set of token catcodes with which this parser might start.
+#   If there is a set, then it must be exhaustive:
+#   
+#    * it is always OK for a parser to have @catcodes=false, although it might
+#      make it inefficient, especially when used in a Choice combinator;
+#   
+#    * it is OK for a parser to declare, say, "keyword-foo" as a key, but
+#      to fail with some token streams starting with keyword "foo";
+#   
+#    * but it is an error for a parser to have a @catcodes set that doesn't
+#      include "keyword-foo" if there are some token streams starting with
+#      keyword "foo" that it might parse successfully.
+#   
+#    * as a corollary, a parser with an empty set of catcodes (as opposed to
+#      no set at all, @catcodes==false), promizes never to succeed parsing
+#      anything. It might be the case for a parser in which we plan to
+#      add some children some time later.
+#   
+# - __transformers__: list of functions applied in sequence to the result of
+#   the parsing. Allows to add post-processing in the AST generation.
+#   
+# - __builder__: generate the result from the bits. What constitutes the "bits"
+#   depends on the parser class.
+#   
+# - __listeners__: list of parsers to be notified when this parser is updated.
+#   This is intended to propagate changes in key sets.
+#   
+# - __backtrack__: when false, failing to parse causes an error instead of returning
+#   'fail'
 #
-#  * it is always OK for a parser to have @catcodes=false, although it might
-#    make it inefficient, especially when used in a Choice combinator;
-#
-#  * it is OK for a parser to declare, say, "keyword-foo" as a key, but
-#    to fail with some token streams starting with keyword "foo";
-#
-#  * but it is an error for a parser to have a @catcodes set that doesn't
-#    include "keyword-foo" if there are some token streams starting with
-#    keyword "foo" that it might parse successfully.
-#
-#  * as a corollary, a parser with an empty set of catcodes (as opposed to
-#    no set at all, @catcodes==false), promizes never to succeed parsing
-#    anything. It might be the case for a parser in which we plan to
-#    add some children some time later.
-#
-# transformers: list of functions applied in sequence to the result of
-# the parsing. Allows to add post-processing in the AST generation.
-#
-# builder: generate the result from the bits. What constitutes the "bits"
-# depends on the parser class.
-#
-# listeners: list of parsers to be notified when this parser is updated.
-# This is intended to propagate changes in key sets.
-#
-# backtrack: when false, failing to parse causes an error instead of returning
-# 'fail'
-#
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 callNest    = 0
 reindexNest = 0
 
@@ -127,6 +128,7 @@ exports.Parser = class Parser
     parseInternal: (lx) -> @error "Invalid parser"
 
     # Change the builder. Argument can be:
+    #
     #  * a builder function;
     #  * a number n: the builder selects the nth element of a list
     setBuilder: (builders...) ->
@@ -166,12 +168,14 @@ exports.Parser = class Parser
     #   infinite loops (this is closely related to left-recursion
     #   issues with top-down parsers).
     #
-    # TODO: add support for constant parsers, to optimize reindexing when applicable
+    # __TODO__: add support for constant parsers, to optimize reindexing when applicable
     reindexInternal: ->
 
     # When a change is made to this parser, notify all parsers who
     # registered for update notifications.
+    #
     # Notification procedure:
+    #
     # - a parent parser P's catcodes depend on its child parser C to determine its
     #   catcodes, and a change in C's catcodes might cause a change in P's catcodes.
     # - P informs C that it needs to be notified about catcodes changes, by
@@ -182,7 +186,7 @@ exports.Parser = class Parser
     #   of @notify; if its own catcodes have changed, it propagates the notification
     #   through a final supernotify().
     #
-    # TODO: delay notification until the first parsing occurs, to avoid
+    # __TODO__: delay notification until the first parsing occurs, to avoid
     #       useless multiple notifications. Use a "dirty" flag instead,
     #       and perform a check in @parse
     notify: ->
@@ -199,7 +203,7 @@ exports.Parser = class Parser
         return @
 
     isListenedBy: (p) ->
-        # TODO: only checks cycles of length 1
+        # __TODO__: only checks cycles of length 1
         (return true if p==q) for q in @listeners
         return false
 
@@ -223,29 +227,29 @@ exports.Parser = class Parser
             "NOCATCODES"
 
 
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 # Wrap a function into a parser, so that it respects the parser API:
 # (called via method .parse(lx), supporting transformers list).
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 exports.liftedFunction = (x...) -> new LiftedFunction x...
 exports.LiftedFunction = class LiftedFunction extends Parser
-    # field f: function to be applied
+    # __field f__: function to be applied
     typename:    'Function'
     constructor: (@f) -> super
     parseInternal:       (lx) -> return @f(lx)
 
 
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 # Match a token of type t, return it on success.
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 exports.Const = class Const extends Parser
 
-    # field t: expected token type
-    # field values: optional set of accepted token values
+    # __field t__: expected token type
+    # __field values__: optional set of accepted token values
     typename: 'Const'
 
-    # t: type of token
-    # valueKeyed: if true, the value is expected to be included in the key.
+    # __t__: type of token
+    # __valueKeyed__: if true, the value is expected to be included in the key.
     constructor: (@t, valueKeyed, values...) ->
         super
         if values.length>0
@@ -268,7 +272,7 @@ exports.Const = class Const extends Parser
         return fail if @values? and not @values[tok.v]
         return lx.next().v
 
-# TODO: put in a for loop
+# __TODO__: put in a for loop
 exports.id          = new Const 'id'
 exports.number      = new Const 'number'
 exports.indent      = new Const 'indent'
@@ -285,9 +289,9 @@ exports.interpStart = (values...) -> new Const 'interpStart', true, values...
 exports.interpEnd   = new Const 'interpEnd'
 exports.keyword     = keyword = (values...) -> new Const 'keyword', true, values...
 
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 # Read any keyword.
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 exports.AnyKeyword = class AnyKeyword extends Parser
     typename: "any-keyword"
     constructor: -> super; @dirty = false
@@ -298,9 +302,9 @@ exports.AnyKeyword = class AnyKeyword extends Parser
 
 exports.anyKeyword = new AnyKeyword()
 
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 # Compose several parsers in a sequence.
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 exports.sequence = (x...) -> new Sequence x...
 exports.Sequence = class Sequence extends Parser
 
@@ -312,7 +316,7 @@ exports.Sequence = class Sequence extends Parser
         @dirty=true
         @backtrack ?= true
 
-        # TODO: no need to listen after the epsilon children.
+        # __TODO__: no need to listen after the epsilon children.
         # However, the number of epsilon children might change,
         # and the epsilon property is only known after reindexing.
         for child in @children
@@ -358,13 +362,13 @@ exports.Sequence = class Sequence extends Parser
     toString: -> @name ? "Sequence(#{@children.join ', '})"
 
 
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 # Choose between alternative parsers, according to the first token's key.
 #
 # Optionally, takes an extra precedence parameter: children with precedence
 # below this one won't be chosen.
 #
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 exports.choice = choice = (x...) -> new Choice x...
 exports.Choice = class Choice extends Parser
 
@@ -372,17 +376,17 @@ exports.Choice = class Choice extends Parser
     # structures, with fields 'parser', 'prec' (the precedence of the
     # child within the choice parser), 'assoc'.
     #
-    # @list: unordered list of entries, containing all the children of
+    # __@list__: unordered list of entries, containing all the children of
     # this parser. This list is not used directly during parsing, it is used
     # by @reindex to fill the two other lists.
     #
-    # @indexed: hashmap of lists of entries, indexed by catcode; each
+    # __@indexed__: hashmap of lists of entries, indexed by catcode; each
     # list is sorted by decreasing precedence. In the list indexed by
     # catcode 'cc' are all children that might succeed when the next
     # token has catcode cc, i.e. all the children which have catcode
     # cc plus all the children for which @catcode is false.
     #
-    # @unindexed: list of entries for which children have
+    # __@unindexed__: list of entries for which children have
     # @catcode==false, ordered by decreasing precedence.
 
     constructor: (precsAndChildren...) ->
@@ -411,14 +415,14 @@ exports.Choice = class Choice extends Parser
 
     reindexInternal: ->
 
-        #TODO: attempt to keep alwaysEpsilon property
+        #__TODO__: attempt to keep alwaysEpsilon property
 
         # reset indexes
         @indexed  = { }; @unindexed  = [ ];
         @catcodes = { }; @epsilon    = false
 
         # Reindex, set epsilon property
-        # TODO: try to preserve epsilon=='always'
+        # __TODO__: try to preserve epsilon=='always'
         for entry in @list
             entry.parser.reindex()
             @epsilon='maybe' if entry.parser.epsilon
@@ -440,7 +444,7 @@ exports.Choice = class Choice extends Parser
             @unindexed.push entry
 
         # 3rd pass: sort every list by precedence
-        # TODO: make sure to use a stable sort algorithm,
+        # __TODO__: make sure to use a stable sort algorithm,
         # there's no guarantee in Javascript that array::sort is stable.
         sortByDecreasingPrecedence = (a,b) -> a.prec<b.prec
         for _, x of @indexed
@@ -465,9 +469,9 @@ exports.Choice = class Choice extends Parser
     toString: ->
         return @name ? "Choice(#{(x.parser for x in @list).join ' | '})"
 
-#-------------------------------------------------------------------------------
-# TODO: need to create proper messages
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
+# __TODO__: need to create proper messages
+#<!---------------------------------------------------------------------------->
 exports.maybe = (x...) -> new Maybe x...
 exports.Maybe = class Maybe extends Parser
     typename: 'Maybe'
@@ -489,9 +493,9 @@ exports.Maybe = class Maybe extends Parser
 
     toString: -> @name ? "Maybe(#{@parser})"
 
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 # Common usage pattern for gg.maybe()
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 exports.if = (trigger, primary, whenNotTriggered) ->
     exports.maybe(
         exports.sequence(
@@ -501,9 +505,9 @@ exports.if = (trigger, primary, whenNotTriggered) ->
     )
 
 
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 #
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 exports.list = (x...) -> new List x...
 exports.maybeList = (primary, separator) -> new List primary, separator, true
 exports.List = class List extends Parser
@@ -511,7 +515,7 @@ exports.List = class List extends Parser
         super
         @primary    = lift primary
         @separator  = lift separator if separator?
-        # TODO: is it a good thing to let it propagate catcodes?
+        # __TODO__: is it a good thing to let it propagate catcodes?
         @catcodes       = @primary.catcodes
         @primary.addListener @
         @dirty = true
@@ -539,9 +543,9 @@ exports.List = class List extends Parser
     toString: ->
         @name ? if @separator then "List(#{@primary}, #{@separator})" else "List(#{@primary})"
 
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 #
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 exports.wrap = wrap = (x...) -> new Wrap x...
 exports.Wrap = class Wrap extends Parser
     constructor: (parser, @xtraArgs...) ->
@@ -568,7 +572,7 @@ exports.Wrap = class Wrap extends Parser
             args = [ @parser, @xtraArgs...]
             @name ? if @xtraArgs then "Wrap(#{args.join ', '})"
 
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 # Expression parser generator.
 #
 # An expression parser allows to combine primary elements with prefix,
@@ -580,6 +584,7 @@ exports.Wrap = class Wrap extends Parser
 #
 # In addition to precedence, binary operators have associativity,
 # which is one of:
+#
 # * 'none':  an ambiguous expression such as A+B+C is illegal
 # * 'left':  A+B+C is interpreted as (A+B)+C
 # * 'right': A+B+C is interpreted as A+(B+C)
@@ -597,10 +602,10 @@ exports.Wrap = class Wrap extends Parser
 #
 # * 'list' where each parser record appears exactly once, for easy reindexing.
 #
-# TODO: transformers should be applied on all intermediate sub-expressions.
-# TODO: marge sets and findParser with Choice, by adding a prec parameter
+# __TODO__: transformers should be applied on all intermediate sub-expressions.
+# __TODO__: marge sets and findParser with Choice, by adding a prec parameter
 # to Choice.parse.
-#-------------------------------------------------------------------------------
+#<!---------------------------------------------------------------------------->
 exports.expr = (x...) -> new Expr x...
 exports.Expr = class Expr extends Parser
     typename: "Expr"
@@ -615,7 +620,7 @@ exports.Expr = class Expr extends Parser
         @pstore   = { }
         @prefix.addListener @
 
-    # TODO: support key update if expression parsers eventually support catcodes.
+    # __TODO__: support key update if expression parsers eventually support catcodes.
     setPrimary: (primary) ->
         @primary = lift primary
         @primary.addListener @
@@ -632,8 +637,8 @@ exports.Expr = class Expr extends Parser
             (@catcodes[cc]=true) for cc of p.catcodes for p in [@primary,@prefix]
         else @keys = false
 
-    # TODO add assoc support; need some modification in choice::add()
-    # TODO handle flat infix ops
+    # __TODO__ add assoc support; need some modification in choice::add()
+    # __TODO__ handle flat infix ops
     addPrefix: (x) ->
         @error "missing builder" unless x.builder
         x.parser = lift(x.parser)
@@ -693,13 +698,13 @@ exports.Expr = class Expr extends Parser
                 @error "flat infix operators not implemented"
             e2 = @parse lx, p_prec
             if e2 is fail
-                # TODO: undo & return fail if e2 fails?
+                # __TODO__: undo & return fail if e2 fails?
                 @error "parsing error after infix operator #{op}"
             return @partialBuild p, lx, lxpos, e, op, e2
         else # p.kind is 'suffix'
             return @partialBuild p, lx, lxpos, e, op
 
-    # TODO: add transformers
+    # __TODO__: add transformers
     partialBuild: (p, lx, lxpos, args...) ->
         r = p.builder args...
         if r is fail
